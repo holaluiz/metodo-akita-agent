@@ -1,0 +1,29 @@
+FROM node:20-alpine
+
+# Metadado: AI Jail — ambiente isolado para agentes de IA
+# Nunca rode agentes de IA fora deste container na máquina host
+
+WORKDIR /app
+
+# Instale dependências de sistema mínimas necessárias
+RUN apk add --no-cache \
+    git \
+    curl \
+    bash
+
+# Copie manifesto de dependências primeiro (cache de layers)
+COPY package*.json ./
+
+# Instale dependências de produção e dev (ambiente de desenvolvimento)
+RUN npm ci
+
+# NÃO copie o código fonte — será montado como volume
+# Isso garante que edições locais sejam refletidas sem rebuild
+
+# Usuário não-root por segurança
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+
+USER appuser
+
+CMD ["npm", "run", "dev"]
