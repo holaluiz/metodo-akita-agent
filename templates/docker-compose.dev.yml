@@ -1,0 +1,47 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: .docker/Dockerfile.dev
+    container_name: ${COMPOSE_PROJECT_NAME:-projeto}-dev
+    volumes:
+      # Código montado como volume (hot reload funciona)
+      - .:/app
+      # node_modules isolado no container (não vazar para o host)
+      - /app/node_modules
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - .env
+    restart: unless-stopped
+    
+  # Exemplo: banco de dados local para desenvolvimento
+  db:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-projeto}-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-dev}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword}
+      POSTGRES_DB: ${DB_NAME:-devdb}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dev}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Exemplo: Redis para cache/filas
+  cache:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME:-projeto}-cache
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+
+volumes:
+  postgres_data:
